@@ -1,0 +1,38 @@
+import pandas as pd
+import numpy as np
+
+###############################################################################
+
+coefDir='D:/_UF/UF_Students/Natalie/Coefficients/'
+dataDir='D:/_UF/UF_Students/Natalie/Data/'
+res_Dir='D:/_UF/UF_Students/Natalie/Results/'
+
+dataCSV=dataDir+'collardgreens_scans.csv'
+res_CSV=res_Dir+'collardgreens_scans_estimated.csv'
+
+traits=['ADF','ADL','Carbon','Cellulose','LMA','Nitrogen']
+
+###############################################################################
+
+dataFrm=pd.read_csv(dataCSV)
+dataCOL=[x for x in dataFrm.columns if x.startswith('X')]
+
+for trt in traits:
+    print(trt)
+    dataFrm[trt]=np.nan
+    cCSV=pd.read_csv(coefDir+'FFT_Leaf_'+trt+'_PLSR_Coefficients.csv')
+    WVLs=(cCSV.loc[:,cCSV.columns[0]]).to_list()[1:]
+    COEF=np.array((cCSV.loc[:,cCSV.columns[1]]).to_list())
+    WVLs=np.array([float(x.replace('Wave_','')) for x in WVLs])
+    minT,maxT=np.min(WVLs),np.max(WVLs)
+    
+    doCols=[x for x in dataCOL if (float(x.replace('X',''))>=minT)and(float(x.replace('X',''))<=maxT)]
+    doWVLs=np.array([float(x.replace('X','')) for x in doCols])
+    
+    for i in dataFrm.index:
+        iSpec=np.array(dataFrm.loc[i,doCols].values).astype('float32')
+        intWVL=np.interp(WVLs,doWVLs,iSpec)
+        outEST=COEF[0]+np.sum(COEF[1:]*intWVL)
+        dataFrm.loc[i,trt]=outEST
+
+dataFrm.to_csv(res_CSV,index=False)
